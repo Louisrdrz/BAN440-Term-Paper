@@ -103,6 +103,12 @@ ger_info_cuisine_nut3 <- ger_info_cuisine %>% select(! restaurant_link) %>% grou
 
 
 library(MASS)
-working_set$n_rest <-  working_set$n_rest %>% as.factor()
-model1<-polr(n_rest ~ Population, data=working_set, method="probit")
+working_set$n_rest <- working_set$n_rest %>% as.numeric()
+regression_set <- working_set %>% group_by(NUTS_ID) %>% summarise(Population = mean(Population),
+                                                                  MOUNT_TYPE = mean(MOUNT_TYPE),
+                                                                  URBN_TYPE = mean(URBN_TYPE),
+                                                                  COAST_TYPE = mean(COAST_TYPE),
+                                                                  n_rest = mean(n_rest)) 
+regression_set$n_rest <- regression_set$n_rest %>% as.factor()
+model1 <- polr(n_rest ~ Population + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
 summary(model1)
