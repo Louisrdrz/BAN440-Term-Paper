@@ -54,11 +54,11 @@ fn_plot_rest = function(Data_Set, Threshold) {
         return(rest_plot)
 }
 
-pop <- read_excel("/Users/justushelfrich/BAN440_TP/Data/population.xlsx") 
-NUTS_RG_20M_2021_3035 <- st_read("/Users/justushelfrich/BAN440_TP/Data/NUTS_RG_20M_2021_3035/NUTS_RG_20M_2021_3035.shp")
+pop <- read_excel("population.xlsx") 
+NUTS_RG_20M_2021_3035 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp")
 nuts3 <- NUTS_RG_20M_2021_3035
 
-gerset <- read_csv("data/gerset.csv")
+gerset <- read_csv("gerset.csv")
 ger_allinfo2 = fn_create_nut(gerset, "DE")
 
 working_set <- ger_allinfo2
@@ -110,5 +110,5 @@ regression_set <- working_set %>% group_by(NUTS_ID) %>% summarise(Population = m
                                                                   COAST_TYPE = mean(COAST_TYPE),
                                                                   n_rest = mean(n_rest)) 
 regression_set$n_rest <- regression_set$n_rest %>% as.factor()
-model1 <- polr(n_rest ~ Population + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
+model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
 summary(model1)
