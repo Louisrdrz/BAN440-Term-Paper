@@ -122,7 +122,7 @@ regression_set <- working_set %>% group_by(NUTS_ID) %>% summarise(Population = m
 regression_set <- regression_set %>% merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>% merge(., cheap_eats, by = "NUTS_ID")
 regression_set$n_rest <- regression_set$n_rest %>% as.factor()
 model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
-model2 <- polr(n_rest ~ German + Cafe + cheap, data = regression_set, method = "probit")
+model2 <- polr(n_rest ~ German + Cafe + chep, data = regression_set, method = "probit")
 
 summary(model1)
 
