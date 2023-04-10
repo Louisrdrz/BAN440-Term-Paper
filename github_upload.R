@@ -101,6 +101,16 @@ ger_info_cuisine <- ger_allinfo2 %>% select(restaurant_link, NUTS_ID, cuisines) 
         pivot_wider(names_from = cuisines, values_from = new_col, values_fill = 0)
 ger_info_cuisine_nut3 <- ger_info_cuisine %>% select(! restaurant_link) %>% group_by(NUTS_ID) %>% summarise_all(sum)
 
+ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tags) %>% 
+        separate_rows(top_tags, sep = ", ") %>%
+        mutate(new_col = 1) %>%
+        pivot_wider(names_from = top_tags, values_from = new_col, values_fill = 0) %>%
+        mutate_at(c("Cheap Eats"), as.numeric) %>%
+        rename(cheap_eats = "Cheap Eats")
+
+view(ger_info_tag)
+cheap_eats <- ger_info_tag %>% group_by(NUTS_ID) %>% summarise(cheap = sum(cheap_eats))
+
 
 library(MASS)
 working_set$n_rest <- working_set$n_rest %>% as.numeric()
@@ -108,7 +118,12 @@ regression_set <- working_set %>% group_by(NUTS_ID) %>% summarise(Population = m
                                                                   MOUNT_TYPE = mean(MOUNT_TYPE),
                                                                   URBN_TYPE = mean(URBN_TYPE),
                                                                   COAST_TYPE = mean(COAST_TYPE),
-                                                                  n_rest = mean(n_rest)) 
+                                                                  n_rest = mean(n_rest))
+regression_set <- regression_set %>% merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>% merge(., cheap_eats, by = "NUTS_ID")
 regression_set$n_rest <- regression_set$n_rest %>% as.factor()
 model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
+model2 <- polr(n_rest ~ German + Cafe + cheap, data = regression_set, method = "probit")
+
 summary(model1)
+
+cor(regression_set[, c("European", "German")])
