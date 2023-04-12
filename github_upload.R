@@ -65,6 +65,9 @@ fn_plot_rest = function(Data_Set, Threshold) {
 # loading data sets needed
 pop <- read_excel("population.xlsx") # population for the country that is assessed
 nuts3 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 information
+nut3area <- read_csv("reg_area3.csv")
+nuts3 <- nut3area %>% dplyr::select(geo, OBS_VALUE) %>%
+        rename(area = OBS_VALUE, NUTS_ID = geo)  %>% merge(., nuts3, by = "NUTS_ID")
 gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripAdvisor data
 
 # building data set to work with
@@ -75,11 +78,11 @@ working_set <- ger_allinfo2
 
 # summarizing the data on the NUT3 level 
 new_set <- working_set %>% group_by(NUTS_ID) %>% 
-        subset(restaurants_per_inhab < 75) %>% 
+        subset(restaurants_per_inhab < 150) %>% 
         summarise(n_rest = mean(n_rest))
 
 table(new_set$n_rest)
-upperb = 150
+upperb = 500
 
 # creating the regression data set by adding dummy variables
 brdata <- new_set %>% 
@@ -127,17 +130,22 @@ ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tag
         rename(cheap_eats = "Cheap Eats")
 
 view(ger_info_tag)
-cheap_eats <- ger_info_tag %>% group_by(NUTS_ID) %>% summarise(cheap = sum(cheap_eats))
+cheap_eats <- ger_info_tag %>% 
+        group_by(NUTS_ID) %>% 
+        summarise(cheap = sum(cheap_eats))
 
 
 # Pre-Work for Regression ####
 
 working_set$n_rest <- working_set$n_rest %>% as.numeric()
-regression_set <- working_set %>% group_by(NUTS_ID) %>% summarise(Population = mean(Population),
-                                                                  MOUNT_TYPE = mean(MOUNT_TYPE),
-                                                                  URBN_TYPE = mean(URBN_TYPE),
-                                                                  COAST_TYPE = mean(COAST_TYPE),
-                                                                  n_rest = mean(n_rest))
+regression_set <- working_set %>% 
+        group_by(NUTS_ID) %>% 
+        summarise(Population = mean(Population),
+                  MOUNT_TYPE = mean(MOUNT_TYPE),
+                  URBN_TYPE = mean(URBN_TYPE),
+                  COAST_TYPE = mean(COAST_TYPE),
+                  n_rest = mean(n_rest),
+                  area = mean(area))
 
 regression_set <- regression_set %>% 
         merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>% 
@@ -147,8 +155,8 @@ regression_set$n_rest <- regression_set$n_rest %>%
         as.factor()
 
 # Regression ####
-model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
-model2 <- polr(n_rest ~ German + Cafe + cheap, data = regression_set, method = "probit")
+model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE + area, data = regression_set, method = "probit")
+model2 <- polr(n_rest ~ Population + area, data = regression_set, method = "probit")
 
 summary(model1)
 
