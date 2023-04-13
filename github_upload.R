@@ -64,7 +64,8 @@ nuts3 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 i
 nuts2 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 information
 nut3area <- read_csv("reg_area3.csv")
 nuts3 <- nut3area %>% dplyr::select(geo, OBS_VALUE) %>%
-        rename(area = OBS_VALUE, NUTS_ID = geo)  %>% merge(., nuts3, by = "NUTS_ID")
+        rename(area = OBS_VALUE, NUTS_ID = geo) %>% 
+        merge(., nuts3, by = "NUTS_ID")
 gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripAdvisor data
 
 # building data set to work with
@@ -151,16 +152,9 @@ regression_set <- regression_set %>%
 regression_set$n_rest <- regression_set$n_rest %>%
         as.factor()
 
-regression_set$nrest
-
-
 # Regression ####
 model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE + area, data = regression_set, method = "probit")
-model2 <- polr(n_rest ~ log(Population) + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
-
-
 summary(model1)
 
-cor(regression_set[, c("European", "German")])
-
-
+model2 <- polr(n_rest ~ log(Population) + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
+summary(model2)
