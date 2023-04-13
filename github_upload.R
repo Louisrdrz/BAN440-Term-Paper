@@ -23,17 +23,13 @@ fn_create_nut = function(Data_Set, Country) {
                 summarise(n_rest = n()) %>%
                 st_drop_geometry(.)
         
-        # sum(n_rest$n_rest)
-        
         nut_clean <- subset(nut3, select = c(restaurant_link, NUTS_ID)) %>% 
                 st_drop_geometry(.)
-        
         
         nuts_merged <- nut_clean %>%
                 merge(., nuts3, by = "NUTS_ID", all = TRUE) %>%
                 merge(., n_rest, by = "NUTS_ID", y.all = TRUE) %>%
-                subset(., CNTR_CODE == Country & LEVL_CODE == 3) %>% # Country specific settings here
-                mutate_all(., ~ replace_na(., 0))
+                subset(., CNTR_CODE == Country & LEVL_CODE == 3) # Country specific settings here
         
         country_allinfo <- merge(nuts_merged, Data_Set , by = "restaurant_link", y.all = TRUE) %>% 
                 dplyr::select(., !province) %>%
@@ -65,6 +61,7 @@ fn_plot_rest = function(Data_Set, Threshold) {
 # loading data sets needed
 pop <- read_excel("population.xlsx") # population for the country that is assessed
 nuts3 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 information
+nuts2 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 information
 nut3area <- read_csv("reg_area3.csv")
 nuts3 <- nut3area %>% dplyr::select(geo, OBS_VALUE) %>%
         rename(area = OBS_VALUE, NUTS_ID = geo)  %>% merge(., nuts3, by = "NUTS_ID")
@@ -78,7 +75,8 @@ working_set <- ger_allinfo2
 
 # summarizing the data on the NUT3 level 
 new_set <- working_set %>% group_by(NUTS_ID) %>% 
-        subset(restaurants_per_inhab < 150) %>% 
+        # subset(restaurants_per_inhab < 150) %>% 
+        subset() %>% 
         summarise(n_rest = mean(n_rest))
 
 table(new_set$n_rest)
@@ -104,24 +102,19 @@ for (i in 1:nrow(brdata2)) {
 }
 
 # Adding variables to the data ####
-## Work in Progress: Here is the attempt to add the price tag as a variable to regress on
-# working_set_new <- working_set %>% 
-#         group_by(NUTS_ID) %>% 
-#         summarise(n_rest = mean(n_rest), 
-#                   price_level = sum(grepl("€", value)))
-# table(working_set$price_level)
-
-# get cuisines as Boolean variable (We could use this as variables to explain the number of restaurants in a region)
+# get cuisines as Boolean variable
+# (We could use this as variables to explain the number of restaurants in a region)
 ger_info_cuisine <- ger_allinfo2 %>% 
         dplyr::select(restaurant_link, NUTS_ID, cuisines) %>% 
         separate_rows(cuisines, sep = ", ") %>%
         mutate(new_col = 1) %>%
         pivot_wider(names_from = cuisines, values_from = new_col, values_fill = 0)
+
 ger_info_cuisine_nut3 <- ger_info_cuisine %>% 
         dplyr::select(! restaurant_link) %>% 
         group_by(NUTS_ID) %>% summarise_all(sum)
 
-# get info_tag as Boolean variable (We could use this as variables to explain the number of restaurants in a region)
+# get info_tag as Boolean variable
 ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tags) %>% 
         separate_rows(top_tags, sep = ", ") %>%
         mutate(new_col = 1) %>%
@@ -129,14 +122,15 @@ ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tag
         mutate_at(c("Cheap Eats"), as.numeric) %>%
         rename(cheap_eats = "Cheap Eats")
 
-view(ger_info_tag)
+# extract the info about cheap food
 cheap_eats <- ger_info_tag %>% 
         group_by(NUTS_ID) %>% 
         summarise(cheap = sum(cheap_eats))
 
-
 # Pre-Work for Regression ####
+nut2 <- nuts2 %>% subset(LEVL_CODE == 2)
 
+# %>% dplyr::select(NUTS_ID, LEVL_CODE) %>% st_drop_geometry(.)
 working_set$n_rest <- working_set$n_rest %>% as.numeric()
 regression_set <- working_set %>% 
         group_by(NUTS_ID) %>% 
@@ -148,16 +142,25 @@ regression_set <- working_set %>%
                   area = mean(area))
 
 regression_set <- regression_set %>% 
-        merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>% 
-        merge(., cheap_eats, by = "NUTS_ID")
+        merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>%
+        merge(., cheap_eats, by = "NUTS_ID") 
+        # merge(., nut2, by = "NUTS_ID") 
+        # subset(., grepl("^DE7", NUTS_ID))
+        # merge(., brdata2, by = "NUTS_ID")
 
 regression_set$n_rest <- regression_set$n_rest %>%
         as.factor()
 
+regression_set$nrest
+
+
 # Regression ####
 model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE + area, data = regression_set, method = "probit")
-model2 <- polr(n_rest ~ Population + area, data = regression_set, method = "probit")
+model2 <- polr(n_rest ~ log(Population) + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
+
 
 summary(model1)
 
 cor(regression_set[, c("European", "German")])
+
+
