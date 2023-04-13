@@ -158,3 +158,34 @@ summary(model1)
 
 model2 <- polr(n_rest ~ log(Population) + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
 summary(model2)
+
+model3 <- polr(n_rest ~ log(Population) + area, data = regression_set, method = "probit")
+summary(model3)
+
+
+upperb <- 272 ## Number of sections, can be modified
+
+lambda<-model3$coefficients # Estimates
+theta<-model3$zeta # Cutoffs
+
+S_N <- exp(theta - mean(regression_set$area)*lambda[2])
+
+slab<-NULL
+for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
+names(S_N)<-slab
+
+ETR_N <- exp(theta[2:upperb] - theta[2:upperb-1]) * (1:(upperb-1))/(2:upperb)
+
+elab<-NULL
+for (i in 2:upperb) {elab[i-1]<-paste0("$s_",i,"/s_",i-1,"$")}
+names(ETR_N)<-elab
+
+
+knitr::kable(S_N, col.names = c("'000s"), digits = 4,
+             caption = 'Entry thresholds',
+             booktabs = TRUE)
+
+knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
+             caption = 'Entry threshold ratios',
+             booktabs = TRUE)
+
