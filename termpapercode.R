@@ -1,4 +1,5 @@
 # Load libraries
+options(scipen = 999)
 library(tidyverse)
 library(rnaturalearth) #provides a map of countries of the entire world
 library(rworldmap)
@@ -149,8 +150,7 @@ regression_set <- regression_set %>%
 # subset(., grepl("^DE7", NUTS_ID))
 # merge(., brdata2, by = "NUTS_ID")
 
-regression_set$n_rest <- regression_set$n_rest %>%
-  as.factor()
+
 
 # create a vector of breaks for grouping
 breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
@@ -167,6 +167,8 @@ aggregate(area ~ group, data = regression_set, FUN = mean)
 
 
 # Regression ####
+regression_set$n_rest <- regression_set$n_rest %>%
+        as.factor()
 model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE + area, data = regression_set, method = "probit")
 summary(model1)
 
