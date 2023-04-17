@@ -152,18 +152,31 @@ regression_set <- regression_set %>%
 regression_set$n_rest <- regression_set$n_rest %>%
         as.factor()
 
+# create a vector of breaks for grouping
+breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
+
+# create a vector of labels for the groups
+labels <- c("0-50", "50-70", "70-90", "90-110", "110-130", "130-140", "140-165", "165-190", "190-220", "220-250", "250-300", "300-450", "+450")
+
+regression_set$n_rest <- as.integer(regression_set$n_rest)
+# use cut function to group the n_rest column
+regression_set$group <- cut(regression_set$n_rest, breaks = breaks, labels = labels)
+
+# calculate the average for each group
+aggregate(area ~ group, data = regression_set, FUN = mean)
+
+
 # Regression ####
 model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE + area, data = regression_set, method = "probit")
 summary(model1)
 
 model2 <- polr(n_rest ~ log(Population) + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
 summary(model2)
-
-model3 <- polr(n_rest ~ log(Population) + area, data = regression_set, method = "probit")
+model3 <- polr(group ~ log(Population) + area, data = regression_set, method = "probit")
 summary(model3)
 
 
-upperb <- 272 ## Number of sections, can be modified
+upperb <- 12 ## Number of sections, can be modified
 
 lambda<-model3$coefficients # Estimates
 theta<-model3$zeta # Cutoffs
