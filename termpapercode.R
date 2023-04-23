@@ -15,7 +15,7 @@ source("functions.R")
 # loading data sets needed
 pop <- read_excel("population.xlsx") # population for the country that is assessed
 nuts3 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 information
-nuts2 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 information
+nuts2 <- nuts3 # for NUT2 information
 nut3area <- read_csv("reg_area3.csv")
 nuts3 <- nut3area %>% dplyr::select(geo, OBS_VALUE) %>%
   rename(area = OBS_VALUE, NUTS_ID = geo) %>% 
