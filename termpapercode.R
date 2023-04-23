@@ -26,8 +26,6 @@ gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripA
 ger_allinfo2 = fn_create_nut(gerset, "DE")
 working_set <- ger_allinfo2
 
-# fn_plot_rest(working_set, 75) # 75 seems to be a fair threshold to start with
-
 # summarizing the data on the NUT3 level 
 new_set <- working_set %>% group_by(NUTS_ID) %>%
   summarise(n_rest = mean(n_rest))
