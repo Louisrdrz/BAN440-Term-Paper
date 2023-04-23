@@ -16,7 +16,7 @@ source("functions.R")
 pop <- read_excel("population.xlsx") # population for the country that is assessed
 nuts3 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 information
 nuts2 <- nuts3 # for NUT2 information
-nut3area <- read_csv("reg_area3.csv")
+nut3area <- read_csv("reg_area3.csv") # for area information on nut3
 nuts3 <- nut3area %>% dplyr::select(geo, OBS_VALUE) %>%
   rename(area = OBS_VALUE, NUTS_ID = geo) %>% 
   merge(., nuts3, by = "NUTS_ID")
@@ -29,9 +29,7 @@ working_set <- ger_allinfo2
 # fn_plot_rest(working_set, 75) # 75 seems to be a fair threshold to start with
 
 # summarizing the data on the NUT3 level 
-new_set <- working_set %>% group_by(NUTS_ID) %>% 
-  # subset(restaurants_per_inhab < 150) %>% 
-  subset() %>% 
+new_set <- working_set %>% group_by(NUTS_ID) %>%
   summarise(n_rest = mean(n_rest))
 
 table(new_set$n_rest)
@@ -57,8 +55,7 @@ for (i in 1:nrow(brdata2)) {
 }
 
 # Adding variables to the data ####
-# get cuisines as Boolean variable
-# (We could use this as variables to explain the number of restaurants in a region)
+# get cuisines as Boolean variable (We could use this as variables to explain the number of restaurants in a region)
 ger_info_cuisine <- ger_allinfo2 %>% 
   dplyr::select(restaurant_link, NUTS_ID, cuisines) %>% 
   separate_rows(cuisines, sep = ", ") %>%
@@ -83,9 +80,6 @@ cheap_eats <- ger_info_tag %>%
   summarise(cheap = sum(cheap_eats))
 
 # Pre-Work for Regression ####
-nut2 <- nuts2 %>% subset(LEVL_CODE == 2)
-
-# %>% dplyr::select(NUTS_ID, LEVL_CODE) %>% st_drop_geometry(.)
 working_set$n_rest <- working_set$n_rest %>% as.numeric()
 regression_set <- working_set %>% 
   group_by(NUTS_ID) %>% 
@@ -99,10 +93,6 @@ regression_set <- working_set %>%
 regression_set <- regression_set %>% 
   merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>%
   merge(., cheap_eats, by = "NUTS_ID") 
-# merge(., nut2, by = "NUTS_ID") 
-# subset(., grepl("^DE7", NUTS_ID))
-# merge(., brdata2, by = "NUTS_ID")
-
 
 
 # create a vector of breaks for grouping
