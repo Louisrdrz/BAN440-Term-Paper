@@ -26,6 +26,17 @@ gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripA
 ger_allinfo2 = fn_create_nut(gerset, "DE")
 working_set <- ger_allinfo2
 
+touristic_df <- read_csv("tourist_nut2.csv")
+toursitic_21 <- touristic_df %>% subset(TIME_PERIOD == 2021) %>% subset(., grepl("^DE", geo)) %>% dplyr::select(geo, OBS_VALUE)
+tnew <- toursitic_21[nchar(toursitic_21$geo) == 4, ]
+min <- tnew[order(tnew$OBS_VALUE), ][1:15, ]
+smallest_values <- subset(tnew, OBS_VALUE %in% min$OBS_VALUE)
+tourismfilter <- as.list(unique(smallest_values$geo))
+
+working_set <- ger_allinfo2[grepl(paste(tourismfilter, collapse = "|"), ger_allinfo2$NUTS_ID),]
+
+
+
 # summarizing the data on the NUT3 level 
 new_set <- working_set %>% group_by(NUTS_ID) %>%
   summarise(n_rest = mean(n_rest))
@@ -37,12 +48,13 @@ upperb = 500
 working_set$n_rest <- working_set$n_rest %>% as.numeric()
 regression_set <- working_set %>% 
   group_by(NUTS_ID) %>% 
-  summarise(Population = mean(Population),
+  summarise(Population = (mean(Population))/1000, #88% of people in Germany over 20
             MOUNT_TYPE = mean(MOUNT_TYPE),
             URBN_TYPE = mean(URBN_TYPE),
             COAST_TYPE = mean(COAST_TYPE),
             n_rest = mean(n_rest),
-            area = mean(area))
+            area = mean(area)) %>% 
+        subset(area < 750 & Population < 750)
 
 # create a vector of breaks for grouping
 breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
@@ -97,7 +109,6 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
              booktabs = TRUE)
 
 
-
 # advanced modelling ####
 # Adding variables to the data 
 # get cuisines as Boolean variable (We could use this as variables to explain the number of restaurants in a region)
@@ -126,10 +137,6 @@ cheap_eats <- ger_info_tag %>%
 regression_set <- regression_set %>% 
         merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>%
         merge(., cheap_eats, by = "NUTS_ID") 
-
-
-
-
 
 #Code from the lab that is actually not needed
 # # creating the regression data set by adding dummy variables
