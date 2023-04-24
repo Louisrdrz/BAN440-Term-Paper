@@ -26,6 +26,10 @@ gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripA
 ger_allinfo2 = fn_create_nut(gerset, "DE")
 working_set <- ger_allinfo2
 
+
+Plot1 <- fn_plot_rest(working_set,1000000000)
+ggsave("Plot1.png", plot = Plot1, width = 6, height = 4, dpi = 300)
+
 touristic_df <- read_csv("tourist_nut2.csv")
 toursitic_21 <- touristic_df %>% subset(TIME_PERIOD == 2021) %>% subset(., grepl("^DE", geo)) %>% dplyr::select(geo, OBS_VALUE)
 tnew <- toursitic_21[nchar(toursitic_21$geo) == 4, ]
@@ -46,6 +50,9 @@ regression_set <- working_set %>%
             n_rest = mean(n_rest),
             area = mean(area)) %>% 
         subset(area < 700 & Population < 500)
+
+Plot2 <- fn_plot_rest(working_set,1000000000)
+ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
 
 # create a vector of breaks for grouping
 breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
