@@ -50,8 +50,12 @@ regression_set <- working_set %>%
             n_rest = mean(n_rest),
             area = mean(area)) %>% 
         subset(area < 700 & Population < 500)
+geom <- ger_allinfo2 %>% group_by(NUTS_ID) %>% dplyr::select(geometry) %>% unique()
+nut_plot <- ger_allinfo2 %>% group_by(NUTS_ID) %>% summarise(dummy = length(restaurant_link))
+plot_set <- working_set %>% merge(., nut_plot, all = TRUE) %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% unique() %>% merge(., geom)
+plot_set[is.na(plot_set)] <- 0
 
-Plot2 <- fn_plot_rest(working_set,1000000000)
+Plot2 <- fn_plot_rest(plot_set,1000000000)
 ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
 
 # create a vector of breaks for grouping
@@ -148,7 +152,7 @@ regression_set$Italian <- as.numeric(regression_set$Italian)
 regression_set$groupI <- cut(regression_set$Italian, breaks = breaks, labels = labels)
 
 regression_set$Italian <- as.factor(regression_set$Italian)
-model3 <- polr(Italian ~ log(Population) + cheap, data = regression_set, method = "probit")
+model3 <- polr(Italian ~ log(Population) + cheap + URBN_TYPE, data = regression_set, method = "probit")
 summary(model3)
 
 
