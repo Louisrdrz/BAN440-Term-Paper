@@ -61,8 +61,7 @@ Plot2 <- fn_plot_rest(plot_set,1000000000)
 ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
 
 regression_set$n_rest <- as.numeric(regression_set$n_rest)
-regression_set$Italian<- as.numeric(regression_set$Italian)
-cols <- c("Population", "n_rest", "area", "Italian")
+cols <- c("Population", "n_rest", "area")
 summary <- summary(dplyr::select(regression_set, cols))
 print(summary)
 # Print table using knitr
