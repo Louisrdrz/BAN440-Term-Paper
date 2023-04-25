@@ -29,7 +29,7 @@ ger_allinfo2 = fn_create_nut(gerset, "DE")
 working_set <- ger_allinfo2
 
 
-Plot1 <- fn_plot_rest(working_set,1000000000)
+Plot1 <- fn_plot_rest(working_set)
 ggsave("Plot1.png", plot = Plot1, width = 6, height = 4, dpi = 300)
 
 touristic_df <- read_csv("tourist_nut2.csv")
@@ -57,30 +57,8 @@ nut_plot <- ger_allinfo2 %>% group_by(NUTS_ID) %>% summarise(dummy = length(rest
 plot_set <- working_set %>% merge(., nut_plot, all = TRUE) %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% unique() %>% merge(., geom)
 plot_set[is.na(plot_set)] <- 0
 
-Plot2 <- fn_plot_rest(plot_set,1000000000)
+Plot2 <- fn_plot_rest(plot_set)
 ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
-
-regression_set$n_rest <- as.numeric(regression_set$n_rest)
-cols <- c("Population", "n_rest", "area")
-summary <- summary(dplyr::select(regression_set, cols))
-print(summary)
-# Print table using knitr
-kable(summary, format = "latex")
-
-regression_set$Italian <- as.numeric(regression_set$Italian)
-colSums(Filter(is.numeric, regression_set))
-vect <- head(sort(colSums(Filter(is.numeric, regression_set[,9:120])), decreasing = TRUE), 15)
-vect
-
-#sum(regression_set$`NA`) / sum(vect) 
-
-
-# Seems there is a lot of variance in the number of banks and population sizes, but there are a lot of markets small enough to apply the BR model.
-
-#Look at raw correlations (not the perfect measure given that number of banks is not continuous but will be a decent approximation):
-regression_set$n_rest <- as.numeric(regression_set$n_rest)
-regression_set %>% filter(!is.na(Population) & area<Inf & Population>0) %>% summarize(rho=cor(Population,n_rest))
-
 
 # create a vector of breaks for grouping
 breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
@@ -147,7 +125,9 @@ ger_info_cuisine <- ger_allinfo2 %>%
 
 ger_info_cuisine_nut3 <- ger_info_cuisine %>% 
         dplyr::select(! restaurant_link) %>% 
-        group_by(NUTS_ID) %>% summarise_all(sum)
+        group_by(NUTS_ID) %>% 
+        summarise_all(sum) %>% 
+        dplyr::select(NUTS_ID, Italian, German, European, Pizza)
 
 # get info_tag as Boolean variable
 ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tags) %>% 
@@ -155,7 +135,8 @@ ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tag
         mutate(new_col = 1) %>%
         pivot_wider(names_from = top_tags, values_from = new_col, values_fill = 0) %>%
         mutate_at(c("Cheap Eats"), as.numeric) %>%
-        rename(cheap_eats = "Cheap Eats")
+        rename(cheap_eats = "Cheap Eats") %>% 
+        dplyr::select(NUTS_ID, cheap_eats)
 table(ger_info_cuisine_nut3$Italian)
 # extract the info about cheap food
 cheap_eats <- ger_info_tag %>% 
@@ -176,11 +157,15 @@ regression_set$Italian <- as.numeric(regression_set$Italian)
 regression_set$groupI <- cut(regression_set$Italian, breaks = breaks, labels = labels)
 
 regression_set$Italian <- as.factor(regression_set$Italian)
-model3 <- polr(Italian ~ log(Population) + cheap + URBN_TYPE, data = regression_set, method = "probit")
+model3 <- polr(groupI ~ log(Population) + cheap + URBN_TYPE, data = regression_set, method = "probit")
 summary(model3)
 
+# regression_set$German <- as.factor(regression_set$German)
+table(regression_set$German)
+# model4 <- polr(German ~ log(Population) + cheap + URBN_TYPE, data = regression_set, method = "probit")
+# summary(model4)
 
-upperb <- 40 ## Number of sections, can be modified
+upperb <- 4 ## Number of sections, can be modified
 
 lambda<-model3$coefficients # Estimates
 theta<-model3$zeta # Cutoffs
@@ -208,29 +193,59 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
 
 
 
+regression_set$n_rest <- as.numeric(regression_set$n_rest)
+cols <- c("Population", "n_rest", "area")
+summary <- summary(dplyr::select(regression_set, cols))
+print(summary)
+# Print table using knitr
+kable(summary, format = "latex")
 
-#Code from the lab that is actually not needed
-# summarizing the data on the NUT3 level 
-# new_set <- working_set %>% group_by(NUTS_ID) %>%
-#         summarise(n_rest = mean(n_rest))
-# 
-# table(new_set$n_rest)
-# upperb = 500
-# # creating the regression data set by adding dummy variables
-# brdata <- new_set %>% 
-#   mutate(nrest = as.factor(ifelse(n_rest <= upperb, n_rest,upperb))) %>% 
-#   dplyr::select(! n_rest)
-# 
-# brdata <- dummy_cols(brdata, select_columns="nrest")
-# 
-# brdata2 <- brdata
-# varn <- names(brdata %>% dplyr::select(starts_with("nrest_")))
-# 
-# # filling the rows with 1 until the true value 
-# for (i in 1:nrow(brdata2)) {
-#   row_i <- as.matrix(brdata2[i, varn])
-#   first_one_col <- match(1, row_i)  # index of the first 1 in the row
-#   if (!is.na(first_one_col)) {
-#     brdata2[i, (varn[1:(first_one_col - 1)])] <- 1
-#   }
-# }
+regression_set$Italian <- as.numeric(regression_set$Italian)
+colSums(Filter(is.numeric, regression_set))
+vect <- head(sort(colSums(Filter(is.numeric, regression_set[,9:120])), decreasing = TRUE), 15)
+vect
+
+#sum(regression_set$`NA`) / sum(vect) 
+
+
+# Seems there is a lot of variance in the number of banks and population sizes, but there are a lot of markets small enough to apply the BR model.
+
+#Look at raw correlations (not the perfect measure given that number of banks is not continuous but will be a decent approximation):
+regression_set$n_rest <- as.numeric(regression_set$n_rest)
+regression_set %>% filter(!is.na(Population) & area<Inf & Population>0) %>% summarize(rho=cor(Population,n_rest))
+
+###### BR model #####
+new_set <- regression_set
+new_set$n_rest <- as.numeric(new_set$n_rest)
+table(new_set$n_rest)
+upperb = 200
+# creating the regression data set by adding dummy variables
+brdata <- new_set %>%
+        mutate(nrest = as.factor(ifelse(n_rest <= upperb, n_rest,upperb)))
+
+brdata <- dummy_cols(brdata, select_columns="nrest")
+
+brdata2 <- brdata
+varn <- names(brdata %>% dplyr::select(starts_with("nrest_")))
+
+# filling the rows with 1 until the true value
+for (i in 1:nrow(brdata2)) {
+        row_i <- as.matrix(brdata2[i, varn])
+        first_one_col <- match(1, row_i)  # index of the first 1 in the row
+        if (!is.na(first_one_col)) {
+                brdata2[i, (varn[1:(first_one_col - 1)])] <- 1
+        }
+}
+upperb2 = 42
+
+brformula1<-as.formula(paste0("nrest ~ Population + Population:(",paste(varn[1:upperb2+1], collapse = " + "),") + area"))
+brformula1 
+model_BR1<-polr(brformula1, data=brdata2,  method="probit")
+# summary(model_BR2)
+
+brformula2<-as.formula(paste0("nrest ~ Population + Population:(",paste(varn[1:upperb2+1], collapse = " + "),") + area + URBN_TYPE + Healthy + Italian + cheap + Cafe + German"))
+brformula2 
+model_BR2<-polr(brformula2, data=brdata2,  method="probit")
+# summary(model_BR2)
+
+geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(NUTS_ID, geometry) %>% unique()
