@@ -60,11 +60,19 @@ plot_set[is.na(plot_set)] <- 0
 Plot2 <- fn_plot_rest(plot_set,1000000000)
 ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
 
-cols <- c("Population", "n_rest", "area", "Italian")
+regression_set$n_rest <- as.numeric(regression_set$n_rest)
+cols <- c("Population", "n_rest", "area")
 summary <- summary(dplyr::select(regression_set, cols))
 print(summary)
 # Print table using knitr
 kable(summary, format = "latex")
+
+regression_set$Italian <- as.numeric(regression_set$Italian)
+colSums(Filter(is.numeric, regression_set))
+vect <- head(sort(colSums(Filter(is.numeric, regression_set[,9:120])), decreasing = TRUE), 15)
+vect
+
+#sum(regression_set$`NA`) / sum(vect) 
 
 
 # Seems there is a lot of variance in the number of banks and population sizes, but there are a lot of markets small enough to apply the BR model.
