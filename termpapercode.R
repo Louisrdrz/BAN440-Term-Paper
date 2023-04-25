@@ -126,8 +126,7 @@ ger_info_cuisine <- ger_allinfo2 %>%
 ger_info_cuisine_nut3 <- ger_info_cuisine %>% 
         dplyr::select(! restaurant_link) %>% 
         group_by(NUTS_ID) %>% 
-        summarise_all(sum) %>% 
-        dplyr::select(NUTS_ID, Italian, German, European, Pizza)
+        summarise_all(sum)
 
 # get info_tag as Boolean variable
 ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tags) %>% 
@@ -145,24 +144,28 @@ cheap_eats <- ger_info_tag %>%
 regression_set <- regression_set %>% 
         merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>%
         merge(., cheap_eats, by = "NUTS_ID") 
-table(regression_set$Italian)
+
+regression_set_short <- regression_set %>% 
+        dplyr::select(NUTS_ID, n_rest, Population, area, cheap, URBN_TYPE, MOUNT_TYPE, COAST_TYPE, Italian, German, European, Pizza)
+table(regression_set_short$Italian)
+
 # create a vector of breaks for grouping
 breaks <- c(0, 10, 20, 30, 40, Inf)
 
 # create a vector of labels for the groups
 labels <- c("0-10", "11-20", "21-30", "31-40", "40+")
 
-regression_set$Italian <- as.numeric(regression_set$Italian)
+regression_set_short$Italian <- as.numeric(regression_set_short$Italian)
 # use cut function to group the n_rest column
-regression_set$groupI <- cut(regression_set$Italian, breaks = breaks, labels = labels)
+regression_set_short$groupI <- cut(regression_set_short$Italian, breaks = breaks, labels = labels)
 
-regression_set$Italian <- as.factor(regression_set$Italian)
-model3 <- polr(groupI ~ log(Population) + cheap + URBN_TYPE, data = regression_set, method = "probit")
+regression_set_short$Italian <- as.factor(regression_set_short$Italian)
+model3 <- polr(groupI ~ log(Population) + cheap + URBN_TYPE, data = regression_set_short, method = "probit")
 summary(model3)
 
-# regression_set$German <- as.factor(regression_set$German)
-table(regression_set$German)
-# model4 <- polr(German ~ log(Population) + cheap + URBN_TYPE, data = regression_set, method = "probit")
+# regression_set_short$German <- as.factor(regression_set_short$German)
+table(regression_set_short$German)
+# model4 <- polr(German ~ log(Population) + cheap + URBN_TYPE, data = regression_set_short, method = "probit")
 # summary(model4)
 
 upperb <- 4 ## Number of sections, can be modified
@@ -170,7 +173,7 @@ upperb <- 4 ## Number of sections, can be modified
 lambda<-model3$coefficients # Estimates
 theta<-model3$zeta # Cutoffs
 
-S_N <- exp(theta - mean(regression_set$cheap)*lambda[2])
+S_N <- exp(theta - mean(regression_set_short$cheap)*lambda[2])
 
 slab<-NULL
 for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
@@ -206,7 +209,6 @@ vect <- head(sort(colSums(Filter(is.numeric, regression_set[,9:120])), decreasin
 vect
 
 #sum(regression_set$`NA`) / sum(vect) 
-
 
 # Seems there is a lot of variance in the number of banks and population sizes, but there are a lot of markets small enough to apply the BR model.
 
@@ -249,3 +251,4 @@ model_BR2<-polr(brformula2, data=brdata2,  method="probit")
 # summary(model_BR2)
 
 geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(NUTS_ID, geometry) %>% unique()
+
