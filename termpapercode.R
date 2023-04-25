@@ -67,6 +67,13 @@ print(summary)
 # Print table using knitr
 kable(summary, format = "latex")
 
+regression_set$Italian <- as.numeric(regression_set$Italian)
+colSums(Filter(is.numeric, regression_set))
+vect <- head(sort(colSums(Filter(is.numeric, regression_set[,9:120])), decreasing = TRUE), 15)
+vect
+
+#sum(regression_set$`NA`) / sum(vect) 
+
 
 # Seems there is a lot of variance in the number of banks and population sizes, but there are a lot of markets small enough to apply the BR model.
 
