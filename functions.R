@@ -42,6 +42,7 @@ fn_plot_rest = function(Data_Set) {
                                       space = "Lab", na.value = "grey50", 
                                       breaks = c(0, 100, 200, 500, 1000, 2000),
                                       aesthetics = "colour") +
+                scale_color_discrete(name = "Restaurants per 100,000 inhabitants") +
                 theme(axis.title.x=element_blank(),
                       axis.text.x=element_blank(),
                       axis.ticks.x=element_blank(),
