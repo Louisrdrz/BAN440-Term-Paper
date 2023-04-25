@@ -76,21 +76,14 @@ aggregate(area ~ group, data = regression_set, FUN = mean)
 # Regression ####
 regression_set$n_rest <- regression_set$n_rest %>%
         as.factor()
-
-model1 <- polr(n_rest ~ MOUNT_TYPE + URBN_TYPE + COAST_TYPE + area, data = regression_set, method = "probit")
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
+model1 <- polr(group ~ log(Population) + area, data = regression_set, method = "probit")
 summary(model1)
-
-model2 <- polr(n_rest ~ log(Population) + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
-summary(model2)
-
-model3 <- polr(group ~ log(Population) + area, data = regression_set, method = "probit")
-summary(model3)
-
 
 upperb <- 12 ## Number of sections, can be modified
 
-lambda<-model3$coefficients # Estimates
-theta<-model3$zeta # Cutoffs
+lambda<-model1$coefficients # Estimates
+theta<-model1$zeta # Cutoffs
 
 S_N <- exp(theta - mean(regression_set$area)*lambda[2])
 
@@ -113,7 +106,38 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
              caption = 'Entry threshold ratios',
              booktabs = TRUE)
 
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
+model2 <- polr(group ~ log(Population) + area + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
+summary(model2) # This model returned slightly better thresholds
 
+
+upperb <- 12 ## Number of sections, can be modified
+
+lambda<-model2$coefficients # Estimates
+theta<-model2$zeta # Cutoffs
+
+S_N <- exp(theta - mean(regression_set$area)*lambda[2])
+
+slab<-NULL
+for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
+names(S_N)<-slab
+
+ETR_N <- exp(theta[2:upperb] - theta[2:upperb-1]) * (1:(upperb-1))/(2:upperb)
+
+elab<-NULL
+for (i in 2:upperb) {elab[i-1]<-paste0("$s_",i,"/s_",i-1,"$")}
+names(ETR_N)<-elab
+
+
+knitr::kable(S_N, col.names = c("'000s"), digits = 4,
+             caption = 'Entry thresholds',
+             booktabs = TRUE)
+
+knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
+             caption = 'Entry threshold ratios',
+             booktabs = TRUE)
+
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 # advanced modelling ####
 # Adding variables to the data 
 # get cuisines as Boolean variable (We could use this as variables to explain the number of restaurants in a region)
@@ -147,8 +171,9 @@ regression_set <- regression_set %>%
 
 regression_set_short <- regression_set %>% 
         dplyr::select(NUTS_ID, n_rest, Population, area, cheap, URBN_TYPE, MOUNT_TYPE, COAST_TYPE, Italian, German, European, Pizza)
-table(regression_set_short$Italian)
 
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
+# table(regression_set_short$Italian)
 # create a vector of breaks for grouping
 breaks <- c(0, 10, 20, 30, 40, Inf)
 
@@ -162,12 +187,6 @@ regression_set_short$groupI <- cut(regression_set_short$Italian, breaks = breaks
 regression_set_short$Italian <- as.factor(regression_set_short$Italian)
 model3 <- polr(groupI ~ log(Population) + cheap + URBN_TYPE, data = regression_set_short, method = "probit")
 summary(model3)
-
-# regression_set_short$German <- as.factor(regression_set_short$German)
-table(regression_set_short$German)
-# model4 <- polr(German ~ log(Population) + cheap + URBN_TYPE, data = regression_set_short, method = "probit")
-# summary(model4)
-
 upperb <- 4 ## Number of sections, can be modified
 
 lambda<-model3$coefficients # Estimates
@@ -194,7 +213,48 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
              caption = 'Entry threshold ratios',
              booktabs = TRUE)
 
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 
+table(regression_set_short$German)
+# create a vector of breaks for grouping
+breaks <- c(0, 10, 20, 30, 40, 50, 60, 70, 90, Inf)
+
+# create a vector of labels for the groups
+labels <- c("0-10", "11-20", "21-30", "31-40", "41-50", "51-60", "61-70", "71-90", "90+")
+regression_set_short$German <- as.numeric(regression_set_short$German)
+regression_set_short$groupG <- cut(regression_set_short$German, breaks = breaks, labels = labels)
+regression_set_short$groupG <- as.factor(regression_set_short$groupG)
+model4 <- polr(groupG ~ log(Population) + cheap, data = regression_set_short, method = "probit")
+summary(model4)
+
+upperb <- 8 ## Number of sections, can be modified
+
+lambda<-model4$coefficients # Estimates
+theta<-model4$zeta # Cutoffs
+
+S_N <- exp(theta - mean(regression_set_short$cheap)*lambda[2])
+
+slab<-NULL
+for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
+names(S_N)<-slab
+
+ETR_N <- exp(theta[2:upperb] - theta[2:upperb-1]) * (1:(upperb-1))/(2:upperb)
+
+elab<-NULL
+for (i in 2:upperb) {elab[i-1]<-paste0("$s_",i,"/s_",i-1,"$")}
+names(ETR_N)<-elab
+
+
+knitr::kable(S_N, col.names = c("'000s"), digits = 4,
+             caption = 'Entry thresholds',
+             booktabs = TRUE)
+
+knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
+             caption = 'Entry threshold ratios',
+             booktabs = TRUE)
+
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
+# Louis' Calculations
 
 regression_set$n_rest <- as.numeric(regression_set$n_rest)
 cols <- c("Population", "n_rest", "area")
@@ -215,6 +275,14 @@ vect
 #Look at raw correlations (not the perfect measure given that number of banks is not continuous but will be a decent approximation):
 regression_set$n_rest <- as.numeric(regression_set$n_rest)
 regression_set %>% filter(!is.na(Population) & area<Inf & Population>0) %>% summarize(rho=cor(Population,n_rest))
+
+
+
+
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 
 ###### BR model #####
 new_set <- regression_set
@@ -249,6 +317,6 @@ brformula2<-as.formula(paste0("nrest ~ Population + Population:(",paste(varn[1:u
 brformula2 
 model_BR2<-polr(brformula2, data=brdata2,  method="probit")
 # summary(model_BR2)
-
-geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(NUTS_ID, geometry) %>% unique()
+# 
+# geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(NUTS_ID, geometry) %>% unique()
 
