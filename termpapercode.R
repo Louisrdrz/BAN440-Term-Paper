@@ -8,6 +8,8 @@ library(giscoR)
 library(readxl)
 library(readr)
 library(MASS)
+library(knitr)
+library(dplyr)
 library(fastDummies)
 source("functions.R")
 
@@ -57,6 +59,20 @@ plot_set[is.na(plot_set)] <- 0
 
 Plot2 <- fn_plot_rest(plot_set,1000000000)
 ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
+
+cols <- c("Population", "n_rest", "area", "Italian")
+summary <- summary(dplyr::select(regression_set, cols))
+print(summary)
+# Print table using knitr
+kable(summary, format = "latex")
+
+
+# Seems there is a lot of variance in the number of banks and population sizes, but there are a lot of markets small enough to apply the BR model.
+
+#Look at raw correlations (not the perfect measure given that number of banks is not continuous but will be a decent approximation):
+regression_set$n_rest <- as.numeric(regression_set$n_rest)
+regression_set %>% filter(!is.na(Population) & area<Inf & Population>0) %>% summarize(rho=cor(Population,n_rest))
+
 
 # create a vector of breaks for grouping
 breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
