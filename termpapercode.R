@@ -74,13 +74,14 @@ plot3_set <- working_set %>%
         group_by(NUTS_ID) %>% 
         dplyr::select(restaurants_per_inhab) %>% 
         unique() %>% merge(., geom2, all = TRUE)
-Plot3 <- fn_plot_rest(plot3_set, "3: smaller and less dense markets") # filtered to smaller and less populated markets
+Plot3 <- fn_plot_rest(plot3_set, "3: Smaller and less dense markets") # filtered to smaller and less populated markets
 ggsave("Plot3.png", plot = Plot3, width = 6, height = 4, dpi = 300)
 
-combined_plot <- Plot2 + Plot3 + plot_layout(ncol = 2) # adding plots together for paper
-ggsave("combined_plot.png", plot = combined_plot, width = 6, height = 4, dpi = 300)
+combined_plot12 <- Plot2 + Plot3 + plot_layout(ncol = 2) # adding plots together for paper
+ggsave("combined_plot12.png", plot = combined_plot, width = 6, height = 4, dpi = 300)
 
-Plot1 + Plot2 + Plot3 + plot_layout(ncol = 3) + plot_annotation(title = "Restaurants in Germany per 100,000 residents, cut down for modeling:")
+all_plots <- Plot1 + Plot2 + Plot3 + plot_layout(ncol = 3) + plot_annotation(title = "Restaurants in Germany per 100,000 residents, cut down for modeling:")
+ggsave("all_plots.png", plot = all_plots, width = 15, height = 6, dpi = 300)
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 # create a vector of breaks for grouping
 breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
