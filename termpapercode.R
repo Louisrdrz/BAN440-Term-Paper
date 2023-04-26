@@ -11,6 +11,7 @@ library(MASS)
 library(knitr)
 library(dplyr)
 library(fastDummies)
+library(patchwork)
 source("functions.R")
 
 # Data Preparation ####
@@ -22,6 +23,7 @@ nut3area <- read_csv("reg_area3.csv") # for area information on nut3
 nuts3 <- nut3area %>% dplyr::select(geo, OBS_VALUE) %>%
   rename(area = OBS_VALUE, NUTS_ID = geo) %>% 
   merge(., nuts3, by = "NUTS_ID")
+geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(NUTS_ID, geometry) %>% unique()
 gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripAdvisor data
 
 # building data set to work with
@@ -29,9 +31,13 @@ ger_allinfo2 = fn_create_nut(gerset, "DE")
 working_set <- ger_allinfo2
 
 
-Plot1 <- fn_plot_rest(working_set)
+# Descriptive Stats I
+plot1_set <- working_set %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% 
+        unique() %>% merge(., geom2, all = TRUE)
+Plot1 <- fn_plot_rest(plot1_set, "Restaurants in Germany per 100,000 inhabitants")
 ggsave("Plot1.png", plot = Plot1, width = 6, height = 4, dpi = 300)
 
+# Create data set on touristic regions in Germany
 touristic_df <- read_csv("tourist_nut2.csv")
 toursitic_21 <- touristic_df %>% subset(TIME_PERIOD == 2021) %>% subset(., grepl("^DE", geo)) %>% dplyr::select(geo, OBS_VALUE)
 tnew <- toursitic_21[nchar(toursitic_21$geo) == 4, ]
@@ -52,14 +58,20 @@ regression_set <- working_set %>%
             n_rest = mean(n_rest),
             area = mean(area)) %>% 
         subset(area < 700 & Population < 500)
-geom <- ger_allinfo2 %>% group_by(NUTS_ID) %>% dplyr::select(geometry) %>% unique()
-nut_plot <- ger_allinfo2 %>% group_by(NUTS_ID) %>% summarise(dummy = length(restaurant_link))
-plot_set <- working_set %>% merge(., nut_plot, all = TRUE) %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% unique() %>% merge(., geom)
-plot_set[is.na(plot_set)] <- 0
 
-Plot2 <- fn_plot_rest(plot_set)
+# Descriptive Stats II (how we cut the data)
+plot2_set <- working_set %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% unique() %>% merge(., geom2, all = TRUE)
+Plot2 <- fn_plot_rest(plot2_set, "Restaurants per 100,000 inhabitants: In less tourisitc regions  &")
 ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
+plot3_set <- working_set %>% subset(area < 700 & Population < 500000) %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% unique() %>% merge(., geom2, all = TRUE)
+Plot3 <- fn_plot_rest(plot3_set, "filtered to smaller and less populated markets")
+ggsave("Plot3.png", plot = Plot3, width = 6, height = 4, dpi = 300)
 
+combined_plot <- Plot2 + Plot3 + plot_layout(ncol = 2)
+ggsave("combined_plot.png", plot = combined_plot, width = 6, height = 4, dpi = 300)
+
+
+# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 # create a vector of breaks for grouping
 breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
 
@@ -76,6 +88,8 @@ aggregate(area ~ group, data = regression_set, FUN = mean)
 # Regression ####
 regression_set$n_rest <- regression_set$n_rest %>%
         as.factor()
+
+
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 model1 <- polr(group ~ log(Population) + area, data = regression_set, method = "probit")
 summary(model1)
@@ -106,6 +120,7 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
              caption = 'Entry threshold ratios',
              booktabs = TRUE)
 
+
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 model2 <- polr(group ~ log(Population) + area + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
 summary(model2) # This model returned slightly better thresholds
@@ -127,7 +142,6 @@ ETR_N <- exp(theta[2:upperb] - theta[2:upperb-1]) * (1:(upperb-1))/(2:upperb)
 elab<-NULL
 for (i in 2:upperb) {elab[i-1]<-paste0("$s_",i,"/s_",i-1,"$")}
 names(ETR_N)<-elab
-
 
 knitr::kable(S_N, col.names = c("'000s"), digits = 4,
              caption = 'Entry thresholds',
@@ -317,6 +331,6 @@ brformula2<-as.formula(paste0("nrest ~ Population + Population:(",paste(varn[1:u
 brformula2 
 model_BR2<-polr(brformula2, data=brdata2,  method="probit")
 # summary(model_BR2)
-# 
-# geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(NUTS_ID, geometry) %>% unique()
+#  
+geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(NUTS_ID, geometry) %>% unique()
 
