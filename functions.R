@@ -41,8 +41,8 @@ fn_plot_rest = function(Data_Set) {
                 scale_colour_gradient(low = "#132B43", high = "#56B1F7",
                                       space = "Lab", na.value = "grey50", 
                                       breaks = c(0, 100, 200, 500, 1000, 2000),
-                                      aesthetics = "colour",
-                                      name = "Restaurants per 100,000 inhabitants") +
+                                      aesthetics = "colour") +
+                labs(title = "My Plot Title", color = NULL) +
                 theme(axis.title.x=element_blank(),
                       axis.text.x=element_blank(),
                       axis.ticks.x=element_blank(),
