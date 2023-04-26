@@ -42,6 +42,7 @@ fn_plot_rest = function(Data_Set, Title) {
                                       space = "Lab", na.value = "grey50", 
                                       breaks = c(0, 100, 200, 500, 1000, 2000),
                                       aesthetics = "colour") +
+                guides(colour = guide_colorbar(title = NULL)) +
                 labs(title = Title, color = NULL) +
                 theme(axis.title.x=element_blank(),
                       axis.text.x=element_blank(),
