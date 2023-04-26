@@ -29,7 +29,7 @@ gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripA
 # building data set to work with
 ger_allinfo = fn_create_nut(gerset, "DE")
 info_set <- ger_allinfo
-
+length(ger_allinfo$restaurant_link)
 
 # Descriptive Stats I
 plot1_set <-info_set %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% 
@@ -78,7 +78,7 @@ Plot3 <- fn_plot_rest(plot3_set, "3: Smaller and less dense markets") # filtered
 ggsave("Plot3.png", plot = Plot3, width = 6, height = 4, dpi = 300)
 
 combined_plot12 <- Plot2 + Plot3 + plot_layout(ncol = 2) # adding plots together for paper
-ggsave("combined_plot12.png", plot = combined_plot, width = 6, height = 4, dpi = 300)
+ggsave("combined_plot12.png", plot = combined_plot12, width = 6, height = 4, dpi = 300)
 
 all_plots <- Plot1 + Plot2 + Plot3 + plot_layout(ncol = 3) + plot_annotation(title = "Restaurants in Germany per 100,000 residents, cut down for modeling:")
 ggsave("all_plots.png", plot = all_plots, width = 15, height = 6, dpi = 300)
@@ -191,14 +191,16 @@ table(ger_info_cuisine_nut3$Italian)
 cheap_eats <- ger_info_tag %>% 
         group_by(NUTS_ID) %>% 
         summarise(cheap = sum(cheap_eats))
+
 regression_set <- regression_set %>% 
         merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>%
-        merge(., cheap_eats, by = "NUTS_ID") 
+        merge(., cheap_eats, by = "NUTS_ID")
 
 
 # create now a data set that is used for modeling
 regression_set_short <- regression_set %>% 
-        dplyr::select(NUTS_ID, n_rest, Population, area, cheap, URBN_TYPE, MOUNT_TYPE, COAST_TYPE, Italian, German, European, Pizza)
+        dplyr::select(NUTS_ID, n_rest, Population, area, cheap, 
+                      URBN_TYPE, MOUNT_TYPE, COAST_TYPE, Italian, German, European, Pizza)
 
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 # table(regression_set_short$Italian)
@@ -284,13 +286,21 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
 
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 # Louis' Calculations
+regression_set_short <- regression_set %>% 
+        dplyr::select(NUTS_ID, n_rest, Population, area, cheap, 
+                      URBN_TYPE, MOUNT_TYPE, COAST_TYPE, Italian, German, European, Pizza)
 
-regression_set$n_rest <- as.numeric(regression_set$n_rest)
+regression_set_short$n_rest <- as.numeric(regression_set_short$n_rest)
 cols <- c("Population", "n_rest", "area")
-summary <- summary(dplyr::select(regression_set, cols))
-print(summary)
+summary_modeldata <- summary(dplyr::select(regression_set_short, cols))
+summary_set <- info_set %>% group_by(NUTS_ID) %>% summarise(Population = mean(Population)/1000,
+                                                            n_rest = mean(n_rest),
+                                                            area = mean(area))
+summary_wholegermany <- summary(dplyr::select(summary_set, cols))
+print(summary_wholegermany)
+print(summary_modeldata)
 # Print table using knitr
-kable(summary, format = "latex")
+kable(summary_modeldata, format = "latex")
 
 regression_set$Italian <- as.numeric(regression_set$Italian)
 colSums(Filter(is.numeric, regression_set))
