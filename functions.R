@@ -34,7 +34,7 @@ fn_create_nut = function(Data_Set, Country) {
         return(country_allinfo)
 }
 # creating a function to plot the data for a certain threshold (number of restaurants per 100,000 inhabitants)
-fn_plot_rest = function(Data_Set, "My Plot Title") {
+fn_plot_rest = function(Data_Set, Title) {
         rest_plot <- ggplot(data = Data_Set, aes(geometry = geometry)) +
                 geom_sf() +
                 geom_sf(data = Data_Set, aes(fill = restaurants_per_inhab)) +
@@ -42,7 +42,7 @@ fn_plot_rest = function(Data_Set, "My Plot Title") {
                                       space = "Lab", na.value = "grey50", 
                                       breaks = c(0, 100, 200, 500, 1000, 2000),
                                       aesthetics = "colour") +
-                labs(title = "My Plot Title", color = NULL) +
+                labs(title = "Title", color = NULL) +
                 theme(axis.title.x=element_blank(),
                       axis.text.x=element_blank(),
                       axis.ticks.x=element_blank(),
