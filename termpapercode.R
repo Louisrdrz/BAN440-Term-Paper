@@ -50,6 +50,7 @@ working_set <- ger_allinfo[grepl(paste(tourismfilter, collapse = "|"), ger_allin
 
 # Pre-Work for Regression ####
 working_set$n_rest <- working_set$n_rest %>% as.numeric()
+working_set$avg_rating <- working_set$avg_rating %>% as.numeric()
 regression_set <- working_set %>%
                 group_by(NUTS_ID) %>%
                 summarise(
@@ -200,7 +201,7 @@ regression_set <- regression_set %>%
 # create now a data set that is used for modeling
 regression_set_short <- regression_set %>% 
         dplyr::select(NUTS_ID, n_rest, Population, area, cheap, 
-                      URBN_TYPE, MOUNT_TYPE, COAST_TYPE, Italian, German, European, Pizza)
+                      URBN_TYPE, MOUNT_TYPE, COAST_TYPE, Italian, German)
 
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 # table(regression_set_short$Italian)
@@ -216,14 +217,14 @@ regression_set_short$Italian <- as.numeric(regression_set_short$Italian)
 regression_set_short$groupI <- cut(regression_set_short$Italian, breaks = breaks, labels = labels)
 
 regression_set_short$Italian <- as.factor(regression_set_short$Italian)
-model3 <- polr(groupI ~ log(Population) + area + cheap + URBN_TYPE, data = regression_set_short, method = "probit")
+model3 <- polr(groupI ~ log(Population) + cheap + URBN_TYPE + MOUNT_TYPE + COAST_TYPE + German, data = regression_set_short, method = "probit")
 summary(model3)
 upperb <- 6 ## Number of sections, can be modified
 
 lambda<-model3$coefficients # Estimates
 theta<-model3$zeta # Cutoffs
 
-S_N <- exp(theta - mean(regression_set_short$area)*lambda[2] - mean(regression_set_short$cheap)*lambda[3]- mean(regression_set_short$URBN_TYPE)*lambda[4])
+S_N <- exp(theta - mean(regression_set_short$cheap)*lambda[2] - mean(regression_set_short$URBN_TYPE)*lambda[3] - mean(regression_set_short$MOUNT_TYPE)*lambda[4] - mean(regression_set_short$COAST_TYPE)*lambda[5]  - mean(regression_set_short$German)*lambda[6])
 
 slab<-NULL
 for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
@@ -245,7 +246,7 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
              booktabs = TRUE)
 
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
-
+table(regression_set_short$Italian)
 table(regression_set_short$German)
 # create a vector of breaks for grouping
 breaks <- c(0, 10, 20, 30, 40, 50, 60, 70, 90, Inf)
@@ -255,7 +256,8 @@ labels <- c("0-10", "11-20", "21-30", "31-40", "41-50", "51-60", "61-70", "71-90
 regression_set_short$German <- as.numeric(regression_set_short$German)
 regression_set_short$groupG <- cut(regression_set_short$German, breaks = breaks, labels = labels)
 regression_set_short$groupG <- as.factor(regression_set_short$groupG)
-model4 <- polr(groupG ~ log(Population) + cheap + area + URBN_TYPE, data = regression_set_short, method = "probit")
+regression_set_short$Italian <- as.numeric(regression_set_short$Italian)
+model4 <- polr(groupG ~ log(Population) +  cheap + URBN_TYPE + MOUNT_TYPE + COAST_TYPE + Italian, data = regression_set_short, method = "probit")
 summary(model4)
 
 upperb <- 8 ## Number of sections, can be modified
@@ -263,7 +265,7 @@ upperb <- 8 ## Number of sections, can be modified
 lambda<-model4$coefficients # Estimates
 theta<-model4$zeta # Cutoffs
 
-S_N <- exp(theta - mean(regression_set_short$cheap)*lambda[2] - mean(regression_set_short$area)*lambda[3]- mean(regression_set_short$URBN_TYPE)*lambda[4])
+S_N <- exp(theta - mean(regression_set_short$cheap)*lambda[2] - mean(regression_set_short$URBN_TYPE)*lambda[3] - mean(regression_set_short$MOUNT_TYPE)*lambda[4] - mean(regression_set_short$COAST_TYPE)*lambda[5]  - mean(regression_set_short$Italian)*lambda[6])
 
 slab<-NULL
 for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
