@@ -1,0 +1,108 @@
+---
+title: "termpaperannex"
+output: html_document
+date: "2023-04-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message = FALSE}
+# Load libraries
+options(scipen = 999)
+library(tidyverse)
+library(rnaturalearth) # provides a map of countries of the entire world
+library(rworldmap) # for map generation
+library(sf)  # for map generation
+library(giscoR)
+library(readxl) # loading excel files
+library(readr)
+library(MASS) # for modelling
+library(knitr)
+library(dplyr)
+library(fastDummies)
+source("functions.R") # own functions used to fasten coding (see Annex 2)
+```
+
+# Data loading and preparation
+```{r, loading relevant data}
+# restaurants <- read_csv("data/european_restaurants.csv") # original TripAdvisor data 
+# gerset <- restaurants %>% filter(country == "Germany") # Subset of OG data for Germany
+# write.csv(gerset, "data/gerset.csv") # save data for Germany to reduce computing time
+pop <- read_excel("population.xlsx") # population for the country that is assessed (Source: Eurostats)
+touristic_df <- read_csv("tourist_nut2.csv") # data on touristic movemet in Europe (Source: Eurostats)
+nuts3 <- st_read("NUTS_RG_20M_2021_3035.shp/NUTS_RG_20M_2021_3035.shp") # NUT3 information (Source: Eurostats)
+nuts2 <- nuts3 # for NUT2 information
+nut3area <- read_csv("reg_area3.csv") # for area information on nut3 (Source: Eurostats)
+nuts3 <- nut3area %>% dplyr::select(geo, OBS_VALUE) %>%
+  rename(area = OBS_VALUE, NUTS_ID = geo) %>% 
+  merge(., nuts3, by = "NUTS_ID")
+
+gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripAdvisor data
+```
+
+Based on the data set for Germany that was created as a simple subset of the TripAdvisor set, we create a new data set, including the NUT3 regions of Germany based on the latitude and longitude of each restaurant.
+```{r, Nut2 df}
+# building data set to work with
+ger_allinfo2 = fn_create_nut(gerset, "DE")
+working_set <- ger_allinfo2
+mean(working_set$restaurants_per_inhab)
+```
+
+# Descriptive Statistics I
+First, we needed to view the data we are using for the following research:
+
+```{r, Plot1}
+Plot1 <- fn_plot_rest(working_set,1000000000)
+ggsave("Plot1.png", plot = Plot1, width = 6, height = 4, dpi = 300)
+```
+```{r}
+Plot1
+```
+
+# Filtering based on tourism data
+After several tries on how to aggregate the data and cutting it into suitable markets, we used Eurostats data on the number of tourists in Germany to identify less touristic regions to ensure to have markets that are less influenced by people that are not included in our population data. 
+
+```{r, tourism data}
+touristic_df <- read_csv("tourist_nut2.csv")
+toursitic_21 <- touristic_df %>% subset(TIME_PERIOD == 2021) %>% subset(., grepl("^DE", geo)) %>% dplyr::select(geo, OBS_VALUE)
+tnew <- toursitic_21[nchar(toursitic_21$geo) == 4, ]
+min <- tnew[order(tnew$OBS_VALUE), ][1:20, ]
+smallest_values <- subset(tnew, OBS_VALUE %in% min$OBS_VALUE)
+tourismfilter <- as.list(unique(smallest_values$geo))
+working_set <- ger_allinfo2[grepl(paste(tourismfilter, collapse = "|"), ger_allinfo2$NUTS_ID),]
+```
+
+# Set-up for first regression
+Based on the now filtered data we started to create our first regression set. The grouping and filtering of the data follows in parts the Lab3 from the lecture (BAN-440 summer term 2023, NHH Bergen Norway)
+```{r, first regression set}
+working_set$n_rest <- working_set$n_rest %>% as.numeric()
+regression_set <- working_set %>% 
+  group_by(NUTS_ID) %>% 
+  summarise(Population = (mean(Population))/1000, #88% of people in Germany over 20
+            MOUNT_TYPE = mean(MOUNT_TYPE),
+            URBN_TYPE = mean(URBN_TYPE),
+            COAST_TYPE = mean(COAST_TYPE),
+            n_rest = mean(n_rest),
+            area = mean(area)) %>% 
+        subset(area < 700 & Population < 500)
+```
+
+
+# Descriptive Statistics II
+
+```{r, Plot2}
+geom <- ger_allinfo2 %>% group_by(NUTS_ID) %>% dplyr::select(geometry) %>% unique()
+nut_plot <- ger_allinfo2 %>% group_by(NUTS_ID) %>% summarise(dummy = length(restaurant_link))
+plot_set <- working_set %>% merge(., nut_plot, all = TRUE) %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% unique() %>% merge(., geom)
+plot_set[is.na(plot_set)] <- 0
+
+Plot2 <- fn_plot_rest(plot_set,1000000000)
+ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
+
+```
+```{r}
+Plot2
+```
+
