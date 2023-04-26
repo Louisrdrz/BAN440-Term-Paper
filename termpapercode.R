@@ -27,50 +27,60 @@ geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(
 gerset <- read_csv("gerset.csv") # Data set for Germany as a subset of the TripAdvisor data
 
 # building data set to work with
-ger_allinfo2 = fn_create_nut(gerset, "DE")
-working_set <- ger_allinfo2
+ger_allinfo = fn_create_nut(gerset, "DE")
+info_set <- ger_allinfo
 
 
 # Descriptive Stats I
-plot1_set <- working_set %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% 
+plot1_set <-info_set %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% 
         unique() %>% merge(., geom2, all = TRUE)
-Plot1 <- fn_plot_rest(plot1_set, "Restaurants in Germany per 100,000 inhabitants")
+Plot1 <- fn_plot_rest(plot1_set, "1: All NUT3 regions") # Restaurants in Germany per 100,000 inhabitants
 ggsave("Plot1.png", plot = Plot1, width = 6, height = 4, dpi = 300)
 
 # Create data set on touristic regions in Germany
 touristic_df <- read_csv("tourist_nut2.csv")
-toursitic_21 <- touristic_df %>% subset(TIME_PERIOD == 2021) %>% subset(., grepl("^DE", geo)) %>% dplyr::select(geo, OBS_VALUE)
+toursitic_21 <- touristic_df %>% subset(TIME_PERIOD == 2021) %>% 
+        subset(., grepl("^DE", geo)) %>% 
+        dplyr::select(geo, OBS_VALUE)
 tnew <- toursitic_21[nchar(toursitic_21$geo) == 4, ]
 min <- tnew[order(tnew$OBS_VALUE), ][1:20, ]
 smallest_values <- subset(tnew, OBS_VALUE %in% min$OBS_VALUE)
 tourismfilter <- as.list(unique(smallest_values$geo))
-
-working_set <- ger_allinfo2[grepl(paste(tourismfilter, collapse = "|"), ger_allinfo2$NUTS_ID),]
+working_set <- ger_allinfo[grepl(paste(tourismfilter, collapse = "|"), ger_allinfo$NUTS_ID),]
 
 # Pre-Work for Regression ####
 working_set$n_rest <- working_set$n_rest %>% as.numeric()
-regression_set <- working_set %>% 
-  group_by(NUTS_ID) %>% 
-  summarise(Population = (mean(Population))/1000, #88% of people in Germany over 20
-            MOUNT_TYPE = mean(MOUNT_TYPE),
-            URBN_TYPE = mean(URBN_TYPE),
-            COAST_TYPE = mean(COAST_TYPE),
-            n_rest = mean(n_rest),
-            area = mean(area)) %>% 
-        subset(area < 700 & Population < 500)
+regression_set <- working_set %>%
+                group_by(NUTS_ID) %>%
+                summarise(
+                        Population = (mean(Population)) / 1000,
+                        MOUNT_TYPE = mean(MOUNT_TYPE),
+                        URBN_TYPE = mean(URBN_TYPE),
+                        COAST_TYPE = mean(COAST_TYPE),
+                        n_rest = mean(n_rest),
+                        area = mean(area)) %>%
+                subset(area < 700 & Population < 500)
 
 # Descriptive Stats II (how we cut the data)
-plot2_set <- working_set %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% unique() %>% merge(., geom2, all = TRUE)
-Plot2 <- fn_plot_rest(plot2_set, "Restaurants per 100,000 inhabitants: In less tourisitc regions  &")
+plot2_set <- working_set %>% 
+        group_by(NUTS_ID) %>% 
+        dplyr::select(restaurants_per_inhab) %>% 
+        unique() %>% merge(., geom2, all = TRUE)
+Plot2 <- fn_plot_rest(plot2_set, "2: Less tourisitc regions") #Restaurants per 100,000 inhabitants: In less tourisitc regions  &
 ggsave("Plot2.png", plot = Plot2, width = 6, height = 4, dpi = 300)
-plot3_set <- working_set %>% subset(area < 700 & Population < 500000) %>% group_by(NUTS_ID) %>% dplyr::select(restaurants_per_inhab) %>% unique() %>% merge(., geom2, all = TRUE)
-Plot3 <- fn_plot_rest(plot3_set, "filtered to smaller and less populated markets")
+
+plot3_set <- working_set %>% 
+        subset(area < 700 & Population < 500000) %>% # advanced filtering for smaller more isolated markets
+        group_by(NUTS_ID) %>% 
+        dplyr::select(restaurants_per_inhab) %>% 
+        unique() %>% merge(., geom2, all = TRUE)
+Plot3 <- fn_plot_rest(plot3_set, "3: smaller and less dense markets") # filtered to smaller and less populated markets
 ggsave("Plot3.png", plot = Plot3, width = 6, height = 4, dpi = 300)
 
-combined_plot <- Plot2 + Plot3 + plot_layout(ncol = 2)
+combined_plot <- Plot2 + Plot3 + plot_layout(ncol = 2) # adding plots together for paper
 ggsave("combined_plot.png", plot = combined_plot, width = 6, height = 4, dpi = 300)
 
-
+Plot1 + Plot2 + Plot3 + plot_layout(ncol = 3) + plot_annotation(title = "Restaurants in Germany per 100,000 residents, cut down for modeling:")
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 # create a vector of breaks for grouping
 breaks <- c(0, 50, 70, 90, 110, 130, 140, 165, 190, 220, 250, 300, 450, Inf)
@@ -89,8 +99,6 @@ aggregate(area ~ group, data = regression_set, FUN = mean)
 regression_set$n_rest <- regression_set$n_rest %>%
         as.factor()
 
-
-# ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 model1 <- polr(group ~ log(Population) + area, data = regression_set, method = "probit")
 summary(model1)
 
@@ -122,16 +130,18 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
 
 
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
-model2 <- polr(group ~ log(Population) + area + MOUNT_TYPE + URBN_TYPE + COAST_TYPE, data = regression_set, method = "probit")
+model2 <- polr(group ~ log(Population) + URBN_TYPE + MOUNT_TYPE + COAST_TYPE, 
+               data = regression_set, method = "probit")
 summary(model2) # This model returned slightly better thresholds
-
+# model2b <- polr(group ~ log(Population) + area + MOUNT_TYPE + URBN_TYPE + COAST_TYPE + cheap + Italian + German, data = regression_set, method = "probit")
+# Warning message: glm.fit: fitted probabilities numerically 0 or 1 occurred 
 
 upperb <- 12 ## Number of sections, can be modified
 
 lambda<-model2$coefficients # Estimates
 theta<-model2$zeta # Cutoffs
 
-S_N <- exp(theta - mean(regression_set$area)*lambda[2])
+S_N <- exp(theta - mean(regression_set$URBN_TYPE)*lambda[2] - mean(regression_set$MOUNT_TYPE)*lambda[3] - mean(regression_set$COAST_TYPE)*lambda[4])
 
 slab<-NULL
 for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
@@ -155,7 +165,7 @@ knitr::kable(ETR_N, col.names = c("ETR"), digits = 4,
 # advanced modelling ####
 # Adding variables to the data 
 # get cuisines as Boolean variable (We could use this as variables to explain the number of restaurants in a region)
-ger_info_cuisine <- ger_allinfo2 %>% 
+ger_info_cuisine <- ger_allinfo %>% 
         dplyr::select(restaurant_link, NUTS_ID, cuisines) %>% 
         separate_rows(cuisines, sep = ", ") %>%
         mutate(new_col = 1) %>%
@@ -167,7 +177,7 @@ ger_info_cuisine_nut3 <- ger_info_cuisine %>%
         summarise_all(sum)
 
 # get info_tag as Boolean variable
-ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tags) %>% 
+ger_info_tag <- ger_allinfo %>% dplyr::select(restaurant_link, NUTS_ID, top_tags) %>% 
         separate_rows(top_tags, sep = ", ") %>%
         mutate(new_col = 1) %>%
         pivot_wider(names_from = top_tags, values_from = new_col, values_fill = 0) %>%
@@ -175,6 +185,7 @@ ger_info_tag <- ger_allinfo2 %>% dplyr::select(restaurant_link, NUTS_ID, top_tag
         rename(cheap_eats = "Cheap Eats") %>% 
         dplyr::select(NUTS_ID, cheap_eats)
 table(ger_info_cuisine_nut3$Italian)
+
 # extract the info about cheap food
 cheap_eats <- ger_info_tag %>% 
         group_by(NUTS_ID) %>% 
@@ -183,30 +194,33 @@ regression_set <- regression_set %>%
         merge(., ger_info_cuisine_nut3, by = "NUTS_ID") %>%
         merge(., cheap_eats, by = "NUTS_ID") 
 
+
+# create now a data set that is used for modeling
 regression_set_short <- regression_set %>% 
         dplyr::select(NUTS_ID, n_rest, Population, area, cheap, URBN_TYPE, MOUNT_TYPE, COAST_TYPE, Italian, German, European, Pizza)
 
 # ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== ======== 
 # table(regression_set_short$Italian)
 # create a vector of breaks for grouping
-breaks <- c(0, 10, 20, 30, 40, Inf)
+breaks <- c(0, 5, 10, 15, 20, 30, 40, Inf)
 
 # create a vector of labels for the groups
-labels <- c("0-10", "11-20", "21-30", "31-40", "40+")
+labels <- c("0-5", "6-10", "11-15" , "16-20", "21-30", "31-40", "40+")
 
 regression_set_short$Italian <- as.numeric(regression_set_short$Italian)
+
 # use cut function to group the n_rest column
 regression_set_short$groupI <- cut(regression_set_short$Italian, breaks = breaks, labels = labels)
 
 regression_set_short$Italian <- as.factor(regression_set_short$Italian)
-model3 <- polr(groupI ~ log(Population) + cheap + URBN_TYPE, data = regression_set_short, method = "probit")
+model3 <- polr(groupI ~ log(Population) + area + cheap + URBN_TYPE, data = regression_set_short, method = "probit")
 summary(model3)
-upperb <- 4 ## Number of sections, can be modified
+upperb <- 6 ## Number of sections, can be modified
 
 lambda<-model3$coefficients # Estimates
 theta<-model3$zeta # Cutoffs
 
-S_N <- exp(theta - mean(regression_set_short$cheap)*lambda[2])
+S_N <- exp(theta - mean(regression_set_short$area)*lambda[2] - mean(regression_set_short$cheap)*lambda[3]- mean(regression_set_short$URBN_TYPE)*lambda[4])
 
 slab<-NULL
 for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
@@ -238,7 +252,7 @@ labels <- c("0-10", "11-20", "21-30", "31-40", "41-50", "51-60", "61-70", "71-90
 regression_set_short$German <- as.numeric(regression_set_short$German)
 regression_set_short$groupG <- cut(regression_set_short$German, breaks = breaks, labels = labels)
 regression_set_short$groupG <- as.factor(regression_set_short$groupG)
-model4 <- polr(groupG ~ log(Population) + cheap, data = regression_set_short, method = "probit")
+model4 <- polr(groupG ~ log(Population) + cheap + area + URBN_TYPE, data = regression_set_short, method = "probit")
 summary(model4)
 
 upperb <- 8 ## Number of sections, can be modified
@@ -246,7 +260,7 @@ upperb <- 8 ## Number of sections, can be modified
 lambda<-model4$coefficients # Estimates
 theta<-model4$zeta # Cutoffs
 
-S_N <- exp(theta - mean(regression_set_short$cheap)*lambda[2])
+S_N <- exp(theta - mean(regression_set_short$cheap)*lambda[2] - mean(regression_set_short$area)*lambda[3]- mean(regression_set_short$URBN_TYPE)*lambda[4])
 
 slab<-NULL
 for (i in 1:(upperb)) {slab[i]<-paste0("$S_",i,"$")}
@@ -331,6 +345,5 @@ brformula2<-as.formula(paste0("nrest ~ Population + Population:(",paste(varn[1:u
 brformula2 
 model_BR2<-polr(brformula2, data=brdata2,  method="probit")
 # summary(model_BR2)
-#  
-geom2 <- nuts3 %>% subset(LEVL_CODE == 3 & CNTR_CODE == "DE") %>% dplyr::select(NUTS_ID, geometry) %>% unique()
+
 
